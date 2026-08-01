@@ -7,6 +7,69 @@ namespace Deployer;
 // TYPO3 CLI tasks (cache, db, upgrade, backend, maintenance)
 
 // ============================================================================
+// PREFLIGHT — fail early and loudly on TYPO3 core drift
+// ============================================================================
+// Runs in the new release BEFORE the symlink switch. Two guards:
+//   1. TYPO3 major >= {{typo3_min_major}} (this recipe targets v13+).
+//   2. Every command in {{typo3_required_commands}} actually exists in this
+//      TYPO3's CLI. Command names drift across majors (e.g. the former
+//      upgrade:prepare is gone); this turns "silent skip mid-deploy" into a
+//      clear abort with the offending command named. See COMPATIBILITY.md.
+// ============================================================================
+
+desc('Preflight: assert TYPO3 version and required CLI commands exist');
+task('typo3:preflight', function () {
+	if (!test('[ -f {{release_path}}/vendor/bin/typo3 ]')) {
+		writeln('<comment>⚠ TYPO3 binary not found — skipping preflight (first deployment?)</comment>');
+		return;
+	}
+
+	writeln('<comment>🛫 TYPO3 preflight...</comment>');
+
+	// 1. Minimum major version.
+	$min = (int) get('typo3_min_major');
+	$versionOutput = run('{{bin/typo3}} --version --no-ansi 2>/dev/null || true');
+	if (preg_match('/\b(\d+)\.\d+\.\d+\b/', $versionOutput, $m)) {
+		$major = (int) $m[1];
+		if ($major < $min) {
+			throw new \Exception(
+				"TYPO3 major $major is below this recipe's minimum ($min). "
+				. 'Pin an older recipe version or upgrade TYPO3.'
+			);
+		}
+		writeln("<info>  ✓ TYPO3 major $major (>= $min)</info>");
+	} else {
+		writeln('<comment>  ⚠ Could not parse TYPO3 version from: ' . trim($versionOutput) . '</comment>');
+	}
+
+	// 2. Required CLI commands must exist in this TYPO3.
+	$required = (array) get('typo3_required_commands');
+	if (empty($required)) {
+		return;
+	}
+
+	$list = run('{{bin/typo3}} list --raw --no-ansi 2>/dev/null || {{bin/typo3}} list --no-ansi 2>/dev/null || true');
+	$missing = [];
+	foreach ($required as $cmd) {
+		// Command appears at a token boundary (avoids cache:flush matching
+		// cache:flushtags).
+		if (!preg_match('/(^|\s)' . preg_quote($cmd, '/') . '(\s|$)/m', $list)) {
+			$missing[] = $cmd;
+		}
+	}
+
+	if (!empty($missing)) {
+		throw new \Exception(
+			'Required TYPO3 CLI command(s) not available in this version: '
+			. implode(', ', $missing)
+			. '. The recipe likely needs updating for this TYPO3 major — see COMPATIBILITY.md.'
+		);
+	}
+
+	writeln('<info>  ✓ All ' . count($required) . ' required CLI commands available</info>');
+});
+
+// ============================================================================
 // TYPO3 TASKS
 // ============================================================================
 
@@ -48,7 +111,8 @@ task('typo3:update_reference_index', function () {
 desc('Execute upgrade wizards');
 task('typo3:upgrade_all', function () {
 	if (test('[ -f {{release_path}}/vendor/bin/typo3 ]')) {
-		run('{{bin/typo3}} upgrade:prepare');
+		// NB: the former `upgrade:prepare` step no longer exists in TYPO3 core
+		// (it was a typo3-console command). `upgrade:run` covers preparation.
 		run('{{bin/typo3}} upgrade:run all --confirm all');
 	}
 });

@@ -45,6 +45,31 @@ set('bin/php', '{{php}} {{php_flags}}');
 set('typo3_context', 'Production');
 set('bin/typo3', 'TYPO3_CONTEXT={{typo3_context}} {{bin/php}} {{release_path}}/vendor/bin/typo3');
 
+// --- Preflight / core-drift guards (see tasks/typo3.php, COMPATIBILITY.md) ---
+// Lowest TYPO3 major this recipe supports. Projects upgrade from older versions
+// but the running site is always v13+.
+set('typo3_min_major', 13);
+
+// Commands the deploy flow relies on; typo3:preflight aborts the deploy if any
+// is missing (core renamed/removed it). Override per project if your flow uses
+// a different set (e.g. no EXT:redirects installed → drop the redirects:* ones).
+set('typo3_required_commands', [
+    'install:fixfolderstructure',
+    'backend:lock',
+    'backend:unlock',
+    'database:updateschema',
+    'language:update',
+    'cache:warmup',
+    'cache:flush',
+    'referenceindex:update',
+    'scheduler:run',
+]);
+
+// Critical vs best-effort: a failing schema update aborts the deploy (stale
+// schema is dangerous). Set to false to fall back to best-effort (warn only) —
+// e.g. for a first deployment against an empty database.
+set('typo3_abort_on_schema_error', true);
+
 // --- Release / docroot ------------------------------------------------------
 set('keep_releases', 5);
 set('typo3_webroot', 'public');

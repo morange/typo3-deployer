@@ -10,49 +10,74 @@ namespace Deployer;
 // DEPLOYMENT HOOKS
 // ============================================================================
 
-// Pre-deployment tasks (mit Fehlerbehandlung für neue Installationen)
+// Pre-deployment tasks.
+//
+// Step criticality (see COMPATIBILITY.md):
+//   • CRITICAL  → not caught; failure aborts the deploy (before the symlink
+//                 switch, so the live release is untouched).
+//   • BEST-EFFORT → wrapped; failure logs a warning and the deploy continues.
+//
+// typo3:preflight is critical: it asserts the TYPO3 version and that the CLI
+// commands used below still exist, turning silent core-drift into a clear stop.
+// typo3:update_database is critical by default (stale schema is dangerous);
+// set('typo3_abort_on_schema_error', false) downgrades it to best-effort, e.g.
+// for a first deployment against an empty database.
 before('deploy:symlink', function () {
 	invoke('deploy:set_permissions');
 
-	// Nur TYPO3-Tasks ausführen wenn TYPO3 installiert ist
-	if (test('[ -f {{release_path}}/vendor/bin/typo3 ]')) {
-		try {
-			invoke('typo3:fix_folder_structure');
-		} catch (\Exception $e) {
-			writeln("<comment>⚠ typo3:fix_folder_structure failed (might be first deployment): " . $e->getMessage() . "</comment>");
-		}
+	// Only run TYPO3 tasks when TYPO3 is present.
+	if (!test('[ -f {{release_path}}/vendor/bin/typo3 ]')) {
+		writeln("<comment>⚠ TYPO3 binary not found, skipping TYPO3-specific tasks (first deployment?)</comment>");
+		return;
+	}
 
-		try {
-			invoke('typo3:backend_lock');
-		} catch (\Exception $e) {
-			writeln("<comment>⚠ typo3:backend_lock failed: " . $e->getMessage() . "</comment>");
-		}
+	// CRITICAL: preflight — abort on version/command drift.
+	invoke('typo3:preflight');
 
+	// BEST-EFFORT: folder structure (may legitimately fail on first deploy).
+	try {
+		invoke('typo3:fix_folder_structure');
+	} catch (\Exception $e) {
+		writeln("<comment>⚠ typo3:fix_folder_structure failed (might be first deployment): " . $e->getMessage() . "</comment>");
+	}
+
+	// BEST-EFFORT: backend lock.
+	try {
+		invoke('typo3:backend_lock');
+	} catch (\Exception $e) {
+		writeln("<comment>⚠ typo3:backend_lock failed: " . $e->getMessage() . "</comment>");
+	}
+
+	// CRITICAL (configurable): database schema update.
+	if (get('typo3_abort_on_schema_error')) {
+		invoke('typo3:update_database');
+	} else {
 		try {
 			invoke('typo3:update_database');
 		} catch (\Exception $e) {
-			writeln("<comment>⚠ typo3:update_database failed: " . $e->getMessage() . "</comment>");
+			writeln("<comment>⚠ typo3:update_database failed (best-effort mode): " . $e->getMessage() . "</comment>");
 		}
+	}
 
-		try {
-			invoke('typo3:language_update');
-		} catch (\Exception $e) {
-			writeln("<comment>⚠ typo3:language_update failed: " . $e->getMessage() . "</comment>");
-		}
+	// BEST-EFFORT: language files.
+	try {
+		invoke('typo3:language_update');
+	} catch (\Exception $e) {
+		writeln("<comment>⚠ typo3:language_update failed: " . $e->getMessage() . "</comment>");
+	}
 
-		try {
-			invoke('typo3:cache_warmup');
-		} catch (\Exception $e) {
-			writeln("<comment>⚠ typo3:cache_warmup failed: " . $e->getMessage() . "</comment>");
-		}
+	// BEST-EFFORT: cache warmup (rebuilds at runtime anyway).
+	try {
+		invoke('typo3:cache_warmup');
+	} catch (\Exception $e) {
+		writeln("<comment>⚠ typo3:cache_warmup failed: " . $e->getMessage() . "</comment>");
+	}
 
-		try {
-			invoke('typo3:health_check');
-		} catch (\Exception $e) {
-			writeln("<comment>⚠ typo3:health_check failed: " . $e->getMessage() . "</comment>");
-		}
-	} else {
-		writeln("<comment>⚠ TYPO3 binary not found, skipping TYPO3-specific tasks (first deployment?)</comment>");
+	// BEST-EFFORT: health check.
+	try {
+		invoke('typo3:health_check');
+	} catch (\Exception $e) {
+		writeln("<comment>⚠ typo3:health_check failed: " . $e->getMessage() . "</comment>");
 	}
 });
 
