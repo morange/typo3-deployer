@@ -19,11 +19,25 @@ set('ssh_type', 'native');
 set('ssh_multiplexing', false);
 
 // --- PHP / TYPO3 CLI --------------------------------------------------------
-// {{php}} is the PHP binary; a provider profile overrides it (e.g. HostEurope
-// needs /usr/bin/php8.3). {{bin/php}} tracks {{php}} so tasks reading either
-// setting stay consistent.
+// Provider PHP invocation is split into two axes so every hoster fits:
+//
+//   {{php}}       = the PHP binary itself. Varies per *host* and is the value
+//                   normally overridden in .hosts.yml. Seen in the wild:
+//                   'php', '/usr/bin/php', '/usr/bin/php8.3', '/usr/bin/php83',
+//                   '/usr/bin/php8.3-cli', '/opt/php83/bin/php'.
+//   {{php_flags}} = extra flags the *hoster* needs on every PHP call. Usually
+//                   empty; Strato runs php as cgi-fcgi and needs
+//                   '-d register_argc_argv=1' so $argv is populated for the
+//                   TYPO3 / composer CLIs. Set this in the provider profile.
+//   {{bin/php}}   = composed "how to invoke PHP" = binary + flags. ALL tasks
+//                   (typo3, cron, composer) invoke PHP through this.
+//
+// We always route vendor/bin/typo3 THROUGH {{bin/php}} rather than trusting the
+// binary's shebang: some hosters (1blu) ship a shebang that resolves to the
+// wrong/old PHP, so the explicit binary is the safe, universal choice.
 set('php', 'php');
-set('bin/php', '{{php}}');
+set('php_flags', '');
+set('bin/php', '{{php}} {{php_flags}}');
 
 // TYPO3_CONTEXT for the CLI. Overridden per host in .hosts.yml so the CLI reads
 // the same .env the web does (host-based rule in public/.htaccess). Fallback =

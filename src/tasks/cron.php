@@ -13,15 +13,16 @@ namespace Deployer;
 desc('Show correct cron job command');
 task('cron:show', function () {
 	$deployPath = get('deploy_path');
-	$php = get('php');
 	$context = get('typo3_context');
 
-	// Ermittle tatsächlichen PHP-Pfad falls relativ
-	if ($php === 'php') {
-		$phpPath = run('which php 2>/dev/null || echo "php"');
-		$phpPath = trim($phpPath);
-	} else {
-		$phpPath = $php;
+	// Canonical PHP invocation = binary + provider flags (e.g. Strato's
+	// '-d register_argc_argv=1'). Resolve the {{php}}/{{php_flags}} placeholders.
+	$phpPath = trim(parse('{{bin/php}}'));
+
+	// If it is still just the bare 'php' command (Alfahosting default), resolve
+	// to an absolute path so the crontab entry works without a login PATH.
+	if ($phpPath === 'php') {
+		$phpPath = trim(run('which php 2>/dev/null || echo "php"'));
 	}
 
 	// TYPO3_CONTEXT muss auch im Cron gesetzt sein (CLI hat kein HTTP_HOST,
