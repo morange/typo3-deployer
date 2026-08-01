@@ -1,0 +1,14 @@
+# Never commit project-specific secrets or host data into this public repo.
+# These belong in each consuming project, not here.
+.hosts.yml
+.hosts.yaml
+.env
+.env.*
+!.env.example
+
+# Tooling / OS
+/vendor/
+composer.lock
+.idea/
+.vscode/
+.DS_Store

@@ -1,0 +1,17 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Deployer;
+
+// Copy to deploy.php in your PROJECT root.
+
+require 'vendor/dmfh/typo3-deployer/src/recipe/typo3.php';
+require 'vendor/dmfh/typo3-deployer/src/provider/alfahosting.php'; // swap for your hoster
+
+import('.hosts.yml');
+
+// --- Optional project-specific overrides ------------------------------------
+// set('rsync_exclude_extra', ['/Projektdateien', 'SHARED-HOSTING.md', 'nas-pull.sh']);
+// set('shared_files', array_merge(get('shared_files'), ['.env.staging']));
+// set('stage_auth_marker', '__STAGE_AUTH__');

@@ -1,0 +1,25 @@
+# Copy to .hosts.yml in your PROJECT (not in this package) and fill in real
+# values. .hosts.yml is gitignored and must never be committed to this repo.
+#
+# Only host-specific data belongs here. Hoster-level defaults come from the
+# provider profile required in deploy.php; generic defaults from the recipe.
+
+hosts:
+  stage:
+    hostname: 'hostXXX.example-hoster.de'
+    remote_user: 'uXXXXXX'
+    port: 22
+    deploy_path: '/var/www/vhosts/<account>/html/stage.example.tld'
+    http_user: 'uXXXXXX'
+    http_group: 'psacln'
+    # CLI context must match the host rule in public/.htaccess.
+    typo3_context: 'Production/Staging'
+
+  production:
+    hostname: 'hostXXX.example-hoster.de'
+    remote_user: 'uXXXXXX'
+    port: 22
+    deploy_path: '/var/www/vhosts/<account>/html/live.example.tld'
+    http_user: 'uXXXXXX'
+    http_group: 'psacln'
+    typo3_context: 'Production'
