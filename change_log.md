@@ -2,6 +2,8 @@
 
 ## 2026-08-02
 
+- 9c7f9c4 [TASK] `CLAUDE.md` mit Architektur-Leitfaden für Claude Code ergänzt: Library-Charakter (kein Build/Test/Lint hier), Drei-Schichten-Aufbau (Kern/Provider-Profile/Projekt), Entry-Point- und Ladereihenfolge, Deploy-Flow mit kritisch/Best-Effort-Split, Hybrid-Verzeichnisstrategie, Zwei-Achsen-PHP-Aufruf, `composer_install_on_server`, `server-bin/`-Vertrag, Editier-Konventionen
+- 01a5a41 [TASK] Deployer 8 zulassen (`deployer/deployer` auf `^7.3 || ^8.0`), Paketbeschreibung auf „Deployer 7/8"
 - aac626b [FEATURE] Build-Strategie-Flag `composer_install_on_server` (Default `false`): `deploy:composer` ist ein sauberer No-op, solange das Flag nicht gesetzt ist — so bleibt die Deploy-Task-Liste über Prebuilt-vendor- und Server-Composer-Projekte hinweg statisch; Doku `docs/BUILD-STRATEGY.md` (Flag, vendor/-rsync-Kopplung, recipe-agnostischer Frontend-Build) + Client-Name aus `config.php`-Kommentar entfernt
 - d8be7af [FEATURE] Drift-Schutz gegen TYPO3-Core-Änderungen: `typo3:preflight` (prüft Min-Major + Existenz der benötigten CLI-Kommandos), kritisch/Best-Effort-Split im Flow (Schema-Update kritisch), toter `upgrade:prepare` entfernt, `COMPATIBILITY.md` mit Versionierungs-Vertrag + Major-Upgrade-Checkliste
 - ab06adc [TASK] Lokalen `Projektdateien/`-Arbeitsnotiz-Ordner via `.gitignore` ausschließen
