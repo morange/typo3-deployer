@@ -1,6 +1,6 @@
 {
     "name": "dmfh/typo3-deployer",
-    "description": "Shared Deployer 7 recipe for deploying TYPO3 v12+ to shared hosting (Alfahosting, IONOS, 1blu, all-inkl, HostEurope, Strato, Mittwald). Hybrid directory strategy, rsync-based, per-provider profiles.",
+    "description": "Shared Deployer 7/8 recipe for deploying TYPO3 v12+ to shared hosting (Alfahosting, IONOS, 1blu, all-inkl, HostEurope, Strato, Mittwald). Hybrid directory strategy, rsync-based, per-provider profiles.",
     "type": "library",
     "license": "MIT",
     "keywords": ["typo3", "deployer", "deployment", "shared-hosting", "rsync"],
@@ -18,7 +18,7 @@
     ],
     "require": {
         "php": ">=8.1",
-        "deployer/deployer": "^7.3"
+        "deployer/deployer": "^7.3 || ^8.0"
     },
     "autoload": {
         "files": []
