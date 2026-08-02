@@ -45,6 +45,23 @@ set('bin/php', '{{php}} {{php_flags}}');
 set('typo3_context', 'Production');
 set('bin/typo3', 'TYPO3_CONTEXT={{typo3_context}} {{bin/php}} {{release_path}}/vendor/bin/typo3');
 
+// --- Build strategy: server-side composer install? --------------------------
+// Full guide + decision table: docs/BUILD-STRATEGY.md
+//
+// false (default) = the deploy artifact (vendor/) is produced BEFORE rsync and
+//   transferred as-is. Choose this when either:
+//     • vendor/ (incl. any assets built into a vendor package) is prepared in
+//       CI or locally and rsynced — then vendor/ must NOT be excluded from
+//       rsync; or
+//     • the server has no PHP CLI (some Strato tariffs), so composer cannot run
+//       there at all.
+// true = run `composer install` on the server (deploy:composer). Suitable when
+//   the built CSS/JS are committed into the site package
+//   (packages/.../Resources/Public); such a project MAY exclude vendor/ from
+//   rsync and rebuild deps on the server — add '/vendor' to rsync_exclude_extra
+//   then. Committed assets in packages/ are untouched by composer (no wipe).
+set('composer_install_on_server', false);
+
 // --- Preflight / core-drift guards (see tasks/typo3.php, COMPATIBILITY.md) ---
 // Lowest TYPO3 major this recipe supports. Projects upgrade from older versions
 // but the running site is always v13+.

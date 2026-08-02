@@ -232,6 +232,24 @@ task('composer:update_typo3', function () {
 });
 
 // ============================================================================
+// DEPLOY-FLOW WRAPPER
+// ============================================================================
+
+// Flag-gated at runtime so the deploy task list can be static: composer:install
+// only runs when the project opted into server-side composer. Default projects
+// (prebuilt vendor/ via CI, or Strato without a PHP CLI) skip it cleanly.
+desc('Install composer dependencies on the server (only if composer_install_on_server=true)');
+task('deploy:composer', function () {
+	if (!get('composer_install_on_server')) {
+		writeln('<comment>↷ composer_install_on_server=false → skipping server composer (prebuilt vendor/)</comment>');
+		return;
+	}
+
+	writeln('<comment>📦 composer_install_on_server=true → installing dependencies on server...</comment>');
+	invoke('composer:install');
+});
+
+// ============================================================================
 // UTILITY TASKS
 // ============================================================================
 

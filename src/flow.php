@@ -176,8 +176,7 @@ task('deploy', [
 	'deploy:check_space',            // ← Check disk space BEFORE rsync
 	'deploy:check_file_count',       // ← Check file count limit BEFORE rsync
 	'deploy:update_code',
-	// composer:install entfällt – vendor/ wird fertig gebaut (inkl. Frontend-Assets)
-	// von der GitHub Action mit-rsynct (Option A). Kein Composer/Node auf dem Server.
+	'deploy:composer',                  // no-op unless composer_install_on_server=true (see config.php)
 	'deploy:sync_shared_config',        // settings.php/additional.php → shared/ (vor dem Symlink-Task)
 	'typo3:create_hybrid_structure',   // Phase 1-3: Parent dirs + Cache
 	'deploy:shared',                    // Shared dirs (charset, labels, fileadmin)
