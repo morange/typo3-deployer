@@ -1,0 +1,23 @@
+name: Update Packagist
+
+# Notifies Packagist to re-scan the repository whenever main or a version tag is
+# pushed, so packagist.org/packages/dmfh/typo3-deployer reflects new releases
+# without waiting for the periodic crawl. Requires a repository secret
+# PACKAGIST_TOKEN holding the Packagist API token (Profile → Show API Token).
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '*'
+
+jobs:
+  update-packagist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mnavarrocarter/packagist-update@v1.0
+        with:
+          username: steffenmatthes
+          api_token: ${{ secrets.PACKAGIST_TOKEN }}
+          package_name: dmfh/typo3-deployer
