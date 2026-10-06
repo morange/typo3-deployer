@@ -58,13 +58,6 @@ fi
 # DETERMINE DIRECTORIES
 # ============================================================================
 
-# SBOM-Zielordner: Nachbarordner von SERVER_BACKUP_PATH (DB-Backups), nicht
-# darin verschachtelt - siehe bin/.env (SERVER_SBOM_PATH).
-if [ -z "$BACKUP_DIR" ]; then
-    BACKUP_DIR="${SERVER_SBOM_PATH:-$HOME/sbom}"
-fi
-mkdir -p "$BACKUP_DIR"
-
 # Release-Verzeichnis: dort liegt composer.json/composer.lock/vendor, die
 # tatsächlich analysiert werden sollen (SERVER_PATH = Deployer "current"-Symlink).
 if [ -z "$RELEASE_DIR" ]; then
@@ -78,6 +71,15 @@ if [ -z "$RELEASE_DIR" ] || [ ! -f "$RELEASE_DIR/composer.json" ]; then
     exit 1
 fi
 echo -e "${GREEN}✓${NC} Release-Verzeichnis: $RELEASE_DIR"
+
+# SBOM-Zielordner: standardmäßig aus RELEASE_DIR (= SERVER_PATH, der "current"-
+# Symlink) abgeleitet - Nachbarordner von current/shared direkt in deploy_path,
+# pro Umgebung getrennt. Kein eigener SERVER_SBOM_PATH-Eintrag in bin/.env nötig;
+# -o/SERVER_SBOM_PATH bleiben nur als expliziter Override möglich.
+if [ -z "$BACKUP_DIR" ]; then
+    BACKUP_DIR="${SERVER_SBOM_PATH:-${RELEASE_DIR%/*}/sbom}"
+fi
+mkdir -p "$BACKUP_DIR"
 
 # ============================================================================
 # DETECT TYPO3 VERSION (identische Logik wie server-backup.sh)
