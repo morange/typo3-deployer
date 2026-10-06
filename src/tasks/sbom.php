@@ -7,10 +7,14 @@ namespace Deployer;
 // ============================================================================
 // SERVER-SIDE SBOM SETUP (opt-in)
 // ============================================================================
-// Creates a persistent sbom/ directory one level ABOVE deploy_path (sibling
-// to backups/, same reasoning: survives release rotation, shared across
-// stage/production of the same customer account) and uploads
-// server-backup-sbom.sh so it can be cron-scheduled on the server.
+// Creates a persistent sbom/ directory INSIDE deploy_path (sibling to
+// current/releases/shared - survives release rotation, but kept separate per
+// environment/host, unlike backups/bin which intentionally sit one level
+// above deploy_path and are shared across stage+production of the same
+// customer account) and uploads server-backup-sbom.sh so it can be
+// cron-scheduled on the server. server-backup-sbom.sh/nas-pull.sh derive the
+// same path by default from SERVER_PATH/NAS_PATH - keep this in sync with
+// those if the layout ever changes again.
 //
 // Disabled by default - a project opts in explicitly because it additionally
 // requires cyclonedx/cyclonedx-php-composer in ITS OWN composer.json (project-
@@ -34,10 +38,11 @@ task('deploy:setup_sbom', function () {
 
     writeln("<comment>🧾 Setting up sbom directory...</comment>");
 
-    // Root path = one level above deploy_path (customer account root) - same
-    // base as the backups/bin directories in tasks/backups.php.
+    // sbom/ lives INSIDE deploy_path (sibling of current/releases/shared) -
+    // per environment, unlike bin/ which stays one level above (shared across
+    // stage/production), same base as in tasks/backups.php.
     $providerRoot = trim(run("cd $deployPath && cd .. && pwd"));
-    $sbomPath = $providerRoot . '/sbom';
+    $sbomPath = $deployPath . '/sbom';
     $binPath = $providerRoot . '/bin';
 
     if (test("[ -d $sbomPath ]")) {
@@ -79,7 +84,7 @@ task('deploy:setup_sbom', function () {
 
     writeln('');
     writeln("<info>   ✅ SBOM setup complete!</info>");
-    writeln("<comment>   📂 $providerRoot/sbom/</comment>");
+    writeln("<comment>   📂 $sbomPath/</comment>");
     writeln("<comment>   ℹ️  Cronjob still needs to be added manually (crontab -e), e.g.:</comment>");
     writeln("<comment>      0 3 * * * $binPath/server-backup-sbom.sh >> $sbomPath/cron.log 2>&1</comment>");
 });
