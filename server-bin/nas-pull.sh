@@ -48,19 +48,23 @@ parse_env() {
 SERVER_HOST=$(parse_env "SERVER_HOST")
 SERVER_BASE=$(parse_env "SERVER_BASE")
 SERVER_BACKUP_PATH=$(parse_env "SERVER_BACKUP_PATH")
+SERVER_SBOM_PATH=$(parse_env "SERVER_SBOM_PATH")
 NAS_PATH=$(parse_env "NAS_PATH")
+NAS_SBOM_PATH=$(parse_env "NAS_SBOM_PATH")
 PROJEKT_NAME=$(parse_env "PROJECT_NAME")
 
 # Fallback für PROJECT_NAME
 [ -z "$PROJEKT_NAME" ] && PROJEKT_NAME="$PROJECT_NAME"
 
-# Expandiere $SERVER_BASE in SERVER_BACKUP_PATH falls vorhanden
+# Expandiere $SERVER_BASE in SERVER_BACKUP_PATH/SERVER_SBOM_PATH falls vorhanden
 if [ -n "$SERVER_BASE" ]; then
     SERVER_BACKUP_PATH=$(echo "$SERVER_BACKUP_PATH" | sed "s|\$SERVER_BASE|$SERVER_BASE|g")
+    SERVER_SBOM_PATH=$(echo "$SERVER_SBOM_PATH" | sed "s|\$SERVER_BASE|$SERVER_BASE|g")
 fi
 
 # Stelle sicher dass Pfad mit / endet
 SERVER_BACKUP_PATH="${SERVER_BACKUP_PATH%/}/"
+[ -n "$SERVER_SBOM_PATH" ] && SERVER_SBOM_PATH="${SERVER_SBOM_PATH%/}/"
 
 # Validierung
 if [ -z "$SERVER_HOST" ] || [ -z "$SERVER_BACKUP_PATH" ] || [ -z "$NAS_PATH" ]; then
@@ -77,15 +81,31 @@ fi
 echo -e "${GREEN}✓${NC} Konfiguration geladen"
 echo ""
 
+# Backup-Typ ermitteln (wird von typo3-backup-helpers.zsh per NAS_PULL_MODE gesetzt).
+# Muss vor der NAS-Verzeichnis-Anlage feststehen, da SBOM-Dateien auf dem NAS in
+# einen eigenen Nachbarordner wandern (analog zum Server: $SERVER_BASE/sbom
+# neben $SERVER_BASE/backups), nicht in den DB/Files-Backup-Ordner.
+BACKUP_TYPE="${NAS_PULL_MODE:-db}"
+
+if [ "$BACKUP_TYPE" = "sbom" ]; then
+    if [ -z "$NAS_SBOM_PATH" ]; then
+        echo -e "${RED}✗ FEHLER: NAS_SBOM_PATH fehlt in .env${NC}"
+        echo "Benötigt für Modus 'sbom': NAS_SBOM_PATH=/Volumes/NAS/.../sbom/"
+        exit 1
+    fi
+    NAS_PROJECT_PATH="${NAS_SBOM_PATH%/}/"
+else
+    NAS_PROJECT_PATH="${NAS_PATH%/}/"
+fi
+
 # Erstelle NAS-Verzeichnis
-NAS_PROJECT_PATH="${NAS_PATH%/}/"
 mkdir -p "$NAS_PROJECT_PATH" 2>/dev/null
 if [ $? -ne 0 ]; then
     echo -e "${RED}✗ FEHLER: NAS nicht erreichbar oder keine Schreibrechte${NC}"
     echo "  Pfad: $NAS_PROJECT_PATH"
     exit 1
 fi
-echo -e "${GREEN}✓${NC} NAS-Verzeichnis bereit"
+echo -e "${GREEN}✓${NC} NAS-Verzeichnis bereit ($NAS_PROJECT_PATH)"
 
 # Verbinde zu Server (nutzt SSH-Config)
 echo ""
@@ -115,34 +135,41 @@ echo -e "${GREEN}✓${NC} Verbunden mit $SERVER_HOST"
 echo ""
 echo "Suche Backups..."
 
-# Erkenne Backup-Typ automatisch
-# Wenn aus Files-Backup aufgerufen: Suche Files
-# Sonst: Suche DB (Standard)
-
-# Prüfe ob NAS_PULL_MODE gesetzt ist (wird von typo3-backup-helpers.zsh gesetzt)
-BACKUP_TYPE="${NAS_PULL_MODE:-db}"
-
 if [ "$BACKUP_TYPE" = "files" ]; then
     # Files-Backups: YYYY-MM-DD_HH-MM-SS_PROJECT_TYPO3-vXX_Files_MODE.tar.bz2
     BACKUP_PATTERN="*_Files_*.tar.bz2"
+    SEARCH_PATH="$SERVER_BACKUP_PATH"
     echo "Suche Files-Backups..."
+elif [ "$BACKUP_TYPE" = "sbom" ]; then
+    # SBOM-Backups: YYYY-MM-DD_HH-MM-SS_PROJECT_TYPO3-vXX_SBOM.json, eigener
+    # Nachbarordner von SERVER_BACKUP_PATH (siehe bin/.env SERVER_SBOM_PATH)
+    BACKUP_PATTERN="*_SBOM.json"
+    SEARCH_PATH="$SERVER_SBOM_PATH"
+    echo "Suche SBOM-Backups..."
 else
     # DB-Backups: YYYY-MM-DD_HH-MM-SS_PROJECT_TYPO3-vXX_DB_dbname.tar.gz
     BACKUP_PATTERN="*_DB_*.tar.gz"
+    SEARCH_PATH="$SERVER_BACKUP_PATH"
     echo "Suche DB-Backups..."
 fi
 
-BACKUP_COUNT=$(ssh $SSH_OPTS "$SSH_TARGET" "ls -1 '$SERVER_BACKUP_PATH'$BACKUP_PATTERN 2>/dev/null | wc -l" | tr -d ' ')
+if [ -z "$SEARCH_PATH" ]; then
+    echo -e "${RED}✗ FEHLER: Kein Server-Pfad für Modus '$BACKUP_TYPE' konfiguriert${NC}"
+    echo "Benötigt in .env: SERVER_SBOM_PATH (für Modus 'sbom') bzw. SERVER_BACKUP_PATH"
+    exit 1
+fi
+
+BACKUP_COUNT=$(ssh $SSH_OPTS "$SSH_TARGET" "ls -1 '$SEARCH_PATH'$BACKUP_PATTERN 2>/dev/null | wc -l" | tr -d ' ')
 
 if [ "$BACKUP_COUNT" -eq 0 ]; then
     echo -e "${YELLOW}⚠ Keine Backups gefunden${NC}"
-    echo "Suche-Pattern: $SERVER_BACKUP_PATH$BACKUP_PATTERN"
+    echo "Suche-Pattern: $SEARCH_PATH$BACKUP_PATTERN"
     exit 0
 fi
 echo -e "${GREEN}✓${NC} $BACKUP_COUNT Backup(s) gefunden"
 
 # Neuestes Backup
-LATEST=$(ssh $SSH_OPTS "$SSH_TARGET" "ls -t '$SERVER_BACKUP_PATH'$BACKUP_PATTERN 2>/dev/null | head -1")
+LATEST=$(ssh $SSH_OPTS "$SSH_TARGET" "ls -t '$SEARCH_PATH'$BACKUP_PATTERN 2>/dev/null | head -1")
 FILENAME=$(basename "$LATEST")
 LOCAL_FILE="${NAS_PROJECT_PATH}${FILENAME}"
 

@@ -1,5 +1,9 @@
 # Change Log
 
+## 2026-10-06
+
+- [FEATURE] Opt-in SBOM support: `tasks/sbom.php` (new, `after('deploy:setup_backups', ...)`) provisions a `sbom/` directory sibling to `backups/` and uploads `server-backup-sbom.sh` (new in `server-bin/`) — disabled by default (`sbom_enabled` flag), since it additionally requires the consuming project to require `cyclonedx/cyclonedx-php-composer` itself. `config.php`: `/sbom` added to the never-rsync exclude list alongside `/backups`/`/bin`. `server-bin/nas-pull.sh` updated with a third `NAS_PULL_MODE=sbom` (own `SERVER_SBOM_PATH`/`NAS_SBOM_PATH`, resolved before the NAS target directory is created). README updated accordingly. Driven by K00101 DVL Sachsen's NIS-2 SBOM-documentation tooling.
+
 ## 2026-08-02
 
 - b1f8501 [TASK] `CLAUDE.md` mit Architektur-Leitfaden für Claude Code ergänzt: Library-Charakter (kein Build/Test/Lint hier), Drei-Schichten-Aufbau (Kern/Provider-Profile/Projekt), Entry-Point- und Ladereihenfolge, Deploy-Flow mit kritisch/Best-Effort-Split, Hybrid-Verzeichnisstrategie, Zwei-Achsen-PHP-Aufruf, `composer_install_on_server`, `server-bin/`-Vertrag, Editier-Konventionen

@@ -34,6 +34,7 @@ require __DIR__ . '/../tasks/directory-structure.php';
 require __DIR__ . '/../tasks/config.php';
 require __DIR__ . '/../tasks/htaccess.php';
 require __DIR__ . '/../tasks/backups.php';
+require __DIR__ . '/../tasks/sbom.php';
 require __DIR__ . '/../tasks/composer.php';
 require __DIR__ . '/../tasks/typo3.php';
 require __DIR__ . '/../tasks/cron.php';

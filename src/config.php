@@ -221,7 +221,7 @@ set('rsync', function () {
             get('rsync_secret_files'),
             get('rsync_exclude_base'),
             get('rsync_exclude_extra'),
-            ['/backups', '/bin'] // never rsync the server-side backup dirs
+            ['/backups', '/bin', '/sbom'] // never rsync the server-side backup/sbom dirs
         ),
         'exclude-file' => false,
         'include' => get('rsync_include_extra'),
