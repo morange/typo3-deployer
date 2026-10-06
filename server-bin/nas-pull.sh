@@ -47,6 +47,7 @@ parse_env() {
 
 SERVER_HOST=$(parse_env "SERVER_HOST")
 SERVER_BASE=$(parse_env "SERVER_BASE")
+SERVER_PATH=$(parse_env "SERVER_PATH")
 SERVER_BACKUP_PATH=$(parse_env "SERVER_BACKUP_PATH")
 SERVER_SBOM_PATH=$(parse_env "SERVER_SBOM_PATH")
 NAS_PATH=$(parse_env "NAS_PATH")
@@ -56,10 +57,25 @@ PROJEKT_NAME=$(parse_env "PROJECT_NAME")
 # Fallback für PROJECT_NAME
 [ -z "$PROJEKT_NAME" ] && PROJEKT_NAME="$PROJECT_NAME"
 
-# Expandiere $SERVER_BASE in SERVER_BACKUP_PATH/SERVER_SBOM_PATH falls vorhanden
+# Expandiere $SERVER_BASE in SERVER_PATH/SERVER_BACKUP_PATH/SERVER_SBOM_PATH falls vorhanden
 if [ -n "$SERVER_BASE" ]; then
+    SERVER_PATH=$(echo "$SERVER_PATH" | sed "s|\$SERVER_BASE|$SERVER_BASE|g")
     SERVER_BACKUP_PATH=$(echo "$SERVER_BACKUP_PATH" | sed "s|\$SERVER_BASE|$SERVER_BASE|g")
     SERVER_SBOM_PATH=$(echo "$SERVER_SBOM_PATH" | sed "s|\$SERVER_BASE|$SERVER_BASE|g")
+fi
+
+# Modus 'sbom' ohne expliziten SERVER_SBOM_PATH/NAS_SBOM_PATH: Pfade relativ zum
+# bereits vorhandenen SERVER_PATH ("current"-Symlink, liegt in deploy_path) bzw.
+# NAS_PATH ableiten - sbom/ liegt als Nachbarordner von current/releases/shared
+# direkt IN deploy_path (pro Umgebung getrennt, z. B. nur live/production statt
+# geteilt über stage+production hinweg). Dadurch braucht ein Projekt dafür keine
+# eigenen SERVER_SBOM_PATH/NAS_SBOM_PATH-Einträge mehr - funktioniert generisch,
+# solange SERVER_PATH/NAS_PATH gesetzt sind (ohnehin Pflicht für db/files-Modus).
+if [ -z "$SERVER_SBOM_PATH" ] && [ -n "$SERVER_PATH" ]; then
+    SERVER_SBOM_PATH="${SERVER_PATH%/*}/sbom"
+fi
+if [ -z "$NAS_SBOM_PATH" ] && [ -n "$NAS_PATH" ]; then
+    NAS_SBOM_PATH="$(dirname "${NAS_PATH%/}")/sbom"
 fi
 
 # Stelle sicher dass Pfad mit / endet
@@ -83,14 +99,14 @@ echo ""
 
 # Backup-Typ ermitteln (wird von typo3-backup-helpers.zsh per NAS_PULL_MODE gesetzt).
 # Muss vor der NAS-Verzeichnis-Anlage feststehen, da SBOM-Dateien auf dem NAS in
-# einen eigenen Nachbarordner wandern (analog zum Server: $SERVER_BASE/sbom
-# neben $SERVER_BASE/backups), nicht in den DB/Files-Backup-Ordner.
+# einen eigenen Nachbarordner wandern (Geschwisterordner von NAS_PATH, s.o.),
+# nicht in den DB/Files-Backup-Ordner.
 BACKUP_TYPE="${NAS_PULL_MODE:-db}"
 
 if [ "$BACKUP_TYPE" = "sbom" ]; then
     if [ -z "$NAS_SBOM_PATH" ]; then
-        echo -e "${RED}✗ FEHLER: NAS_SBOM_PATH fehlt in .env${NC}"
-        echo "Benötigt für Modus 'sbom': NAS_SBOM_PATH=/Volumes/NAS/.../sbom/"
+        echo -e "${RED}✗ FEHLER: NAS_SBOM_PATH konnte nicht ermittelt werden${NC}"
+        echo "Benötigt für Modus 'sbom': entweder NAS_PATH in .env (davon abgeleitet) oder NAS_SBOM_PATH explizit"
         exit 1
     fi
     NAS_PROJECT_PATH="${NAS_SBOM_PATH%/}/"
@@ -141,8 +157,9 @@ if [ "$BACKUP_TYPE" = "files" ]; then
     SEARCH_PATH="$SERVER_BACKUP_PATH"
     echo "Suche Files-Backups..."
 elif [ "$BACKUP_TYPE" = "sbom" ]; then
-    # SBOM-Backups: YYYY-MM-DD_HH-MM-SS_PROJECT_TYPO3-vXX_SBOM.json, eigener
-    # Nachbarordner von SERVER_BACKUP_PATH (siehe bin/.env SERVER_SBOM_PATH)
+    # SBOM-Backups: YYYY-MM-DD_HH-MM-SS_PROJECT_TYPO3-vXX_SBOM.json, liegt als
+    # Nachbarordner von current/releases/shared direkt in deploy_path (siehe
+    # SERVER_SBOM_PATH-Ableitung oben) - pro Host/Umgebung getrennt.
     BACKUP_PATTERN="*_SBOM.json"
     SEARCH_PATH="$SERVER_SBOM_PATH"
     echo "Suche SBOM-Backups..."
@@ -155,7 +172,7 @@ fi
 
 if [ -z "$SEARCH_PATH" ]; then
     echo -e "${RED}✗ FEHLER: Kein Server-Pfad für Modus '$BACKUP_TYPE' konfiguriert${NC}"
-    echo "Benötigt in .env: SERVER_SBOM_PATH (für Modus 'sbom') bzw. SERVER_BACKUP_PATH"
+    echo "Benötigt in .env: SERVER_PATH (davon abgeleitet) oder SERVER_SBOM_PATH explizit (für Modus 'sbom') bzw. SERVER_BACKUP_PATH"
     exit 1
 fi
 
