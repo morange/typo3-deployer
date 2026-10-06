@@ -198,10 +198,18 @@ echo ""
 # Prüfe ob bereits existiert
 if [ -f "$LOCAL_FILE" ]; then
     echo -e "${YELLOW}⚠ Backup existiert bereits auf NAS${NC}"
-    echo "Trotzdem herunterladen? (y/N)"
-    read -r response
-    if [ "$response" != "y" ] && [ "$response" != "Y" ]; then
-        echo "Übersprungen."
+    if [ -t 0 ]; then
+        echo "Trotzdem herunterladen? (y/N)"
+        read -r response
+        if [ "$response" != "y" ] && [ "$response" != "Y" ]; then
+            echo "Übersprungen."
+            exit 0
+        fi
+    else
+        # Nicht-interaktiv (Cronjob/Task Scheduler) - kein read, das ohne TTY
+        # hängen oder sich unterschiedlich verhalten könnte. Gleiches Ergebnis
+        # wie Antwort "N": vorhandenes Backup wird nicht erneut geladen.
+        echo "Nicht-interaktiv - bereits vorhandenes Backup wird nicht erneut geladen."
         exit 0
     fi
 fi
