@@ -23,6 +23,7 @@ NC='\033[0m'
 PROJECT_NAME="${PROJECT_NAME:-TYPO3-v13}"
 BACKUP_DIR=""
 FORCE_MODE=0
+PROJECT_NAME_CLI=""
 
 # ============================================================================
 # PARSE ARGUMENTS
@@ -31,7 +32,7 @@ FORCE_MODE=0
 while getopts "o:n:f" opt; do
     case $opt in
         o) BACKUP_DIR="$OPTARG" ;;
-        n) PROJECT_NAME="$OPTARG" ;;
+        n) PROJECT_NAME="$OPTARG"; PROJECT_NAME_CLI="$OPTARG" ;;
         f) FORCE_MODE=1 ;;
         *)
             echo "Usage: $0 [-o output_dir] [-n project_name] [-f]"
@@ -119,6 +120,13 @@ else
     echo "  - $HOME/shared/.env"
 fi
 
+# -n ist eine explizite CLI-Angabe und darf nicht von einem PROJECT_NAME
+# aus der (später geladenen) .env überschrieben werden - beide .env-Dateien
+# oben können diese Variable ebenfalls setzen (z. B. ein menschenlesbares
+# Label wie "Projekt | BETA" für die TYPO3-Anwendung selbst, nichts mit dem
+# Backup-Dateinamen zu tun).
+[ -n "$PROJECT_NAME_CLI" ] && PROJECT_NAME="$PROJECT_NAME_CLI"
+
 # Fallback-Werte
 BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-365}"
 BACKUP_EMAIL_ENABLED="${BACKUP_EMAIL_ENABLED:-false}"
@@ -145,12 +153,15 @@ trap 'send_error_email "Backup fehlgeschlagen in Zeile $LINENO"' ERR
 # DATABASE CREDENTIALS
 # ============================================================================
 
-# Aus .env
-DB_HOST="${TYPO3_DB_HOST:-localhost}"
-DB_NAME="${TYPO3_DB_NAME}"
-DB_USER="${TYPO3_DB_USER:-$TYPO3_DB_USERNAME}"
-DB_PASS="${TYPO3_DB_PASSWORD}"
-DB_PORT="${TYPO3_DB_PORT:-3306}"
+# Aus .env - unterstützt beide in freier Wildbahn vorkommenden Konventionen:
+# TYPO3_DB_* (TYPO3-Standard-Env-Vars) sowie die kurze DB_*-Form, die manche
+# Projekte in ihrer shared/.env direkt verwenden. Fällt auf DB_* zurück, statt
+# es stillschweigend mit einem leeren TYPO3_DB_*-Wert zu überschreiben.
+DB_HOST="${TYPO3_DB_HOST:-${DB_HOST:-localhost}}"
+DB_NAME="${TYPO3_DB_NAME:-$DB_NAME}"
+DB_USER="${TYPO3_DB_USER:-${TYPO3_DB_USERNAME:-$DB_USER}}"
+DB_PASS="${TYPO3_DB_PASSWORD:-$DB_PASS}"
+DB_PORT="${TYPO3_DB_PORT:-${DB_PORT:-3306}}"
 
 # Parse Host und Port (falls Host bereits Port enthält)
 # Beispiel: "127.0.0.1:3307" → Host=127.0.0.1, Port=3307
@@ -198,7 +209,12 @@ fi
 # ============================================================================
 
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
-BACKUP_FILE="${TIMESTAMP}_${PROJECT_NAME}_TYPO3-${TYPO3_VERSION}_DB_${DB_NAME}.tar.gz"
+# Dateinamen-sicher machen - PROJECT_NAME kann aus der TYPO3-.env stammen und
+# dort ein freitextiges Anzeige-Label sein (Leerzeichen, "|", ...), das in
+# einem Dateinamen bzw. für nachgelagerte Shell-Globbing/rsync-Aufrufe (NAS-
+# Pull) riskant ist.
+PROJECT_NAME_SAFE=$(echo "$PROJECT_NAME" | tr -c 'A-Za-z0-9._-' '_')
+BACKUP_FILE="${TIMESTAMP}_${PROJECT_NAME_SAFE}_TYPO3-${TYPO3_VERSION}_DB_${DB_NAME}.tar.gz"
 BACKUP_PATH="${BACKUP_DIR}/${BACKUP_FILE}"
 TEMP_DIR=$(mktemp -d)
 # Sicherstellen, dass TEMP_DIR bei JEDEM Skriptende entfernt wird (Erfolg,
