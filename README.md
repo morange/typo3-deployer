@@ -69,7 +69,9 @@ vendor/bin/dep rollback production
    scheduler run, backend lock/unlock around the switch.
 5. Stage-only: prepend an HTTP Basic-Auth block to `public/.htaccess`.
 6. Create/refresh the customer-account-level `backups/` and `bin/` dirs and
-   upload the server-side backup scripts from `server-bin/`.
+   upload the server-side backup scripts from `server-bin/`. If `sbom_enabled`
+   is set, also create `sbom/` (sibling to `backups/`) and upload
+   `server-backup-sbom.sh`.
 7. Rotate logs, print a deployment summary.
 
 ## Server-side backup scripts (`server-bin/`)
@@ -80,6 +82,12 @@ deployed to each server's `bin/`. They are parametrised entirely via CLI flags
 
 They are the counterpart to the local `~/typo3-backup` orchestrator, which calls
 them over SSH. Keep script names and flags stable so that contract holds.
+
+`server-backup-sbom.sh` follows the same contract but is **opt-in**
+(`set('sbom_enabled', true)` in the project's `deploy.php`) and not uploaded
+otherwise — it calls `composer CycloneDX:make-sbom`, which requires the
+project's own `composer.json` to require `cyclonedx/cyclonedx-php-composer`
+(project-specific, not a dependency of this package). See `tasks/sbom.php`.
 
 ## Adding a provider
 
