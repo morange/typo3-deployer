@@ -7,6 +7,7 @@
 
 ## 2026-08-02
 
+- 7f8036d [TASK] GitHub-Actions-Workflow `.github/workflows/packagist-update.yml`: stößt bei jedem Push auf `main` sowie bei jedem Tag-Push automatisch ein Re-Scan auf packagist.org an (`mnavarrocarter/packagist-update`-Action, Secret `PACKAGIST_TOKEN`), damit `packagist.org/packages/dmfh/typo3-deployer` neue Releases ohne Wartezeit auf den periodischen Crawl übernimmt — Sync GitHub → Packagist am 2026-10-06 als funktionierend bestätigt
 - b1f8501 [TASK] `CLAUDE.md` mit Architektur-Leitfaden für Claude Code ergänzt: Library-Charakter (kein Build/Test/Lint hier), Drei-Schichten-Aufbau (Kern/Provider-Profile/Projekt), Entry-Point- und Ladereihenfolge, Deploy-Flow mit kritisch/Best-Effort-Split, Hybrid-Verzeichnisstrategie, Zwei-Achsen-PHP-Aufruf, `composer_install_on_server`, `server-bin/`-Vertrag, Editier-Konventionen
 - 67c8c60 [TASK] Deployer 8 zulassen (`deployer/deployer` auf `^7.3 || ^8.0`), Paketbeschreibung auf „Deployer 7/8"
 - fe71e89 [FEATURE] Build-Strategie-Flag `composer_install_on_server` (Default `false`): `deploy:composer` ist ein sauberer No-op, solange das Flag nicht gesetzt ist — so bleibt die Deploy-Task-Liste über Prebuilt-vendor- und Server-Composer-Projekte hinweg statisch; Doku `docs/BUILD-STRATEGY.md` (Flag, vendor/-rsync-Kopplung, recipe-agnostischer Frontend-Build) + Client-Name aus `config.php`-Kommentar entfernt
