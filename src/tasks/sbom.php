@@ -5,16 +5,19 @@ declare(strict_types=1);
 namespace Deployer;
 
 // ============================================================================
-// SERVER-SIDE SBOM SETUP (opt-in)
+// SERVER-SIDE SBOM SETUP + GENERATION (opt-in)
 // ============================================================================
 // Creates a persistent sbom/ directory INSIDE deploy_path (sibling to
 // current/releases/shared - survives release rotation, but kept separate per
 // environment/host, unlike backups/bin which intentionally sit one level
 // above deploy_path and are shared across stage+production of the same
-// customer account) and uploads server-backup-sbom.sh so it can be
-// cron-scheduled on the server. server-backup-sbom.sh/nas-pull.sh derive the
-// same path by default from SERVER_PATH/NAS_PATH - keep this in sync with
-// those if the layout ever changes again.
+// customer account), uploads server-backup-sbom.sh, and then runs it against
+// THIS release right away (deploy:generate_sbom below) - nothing changes
+// between deploys, so a fresh SBOM exactly when the release goes live is the
+// right cadence, not a periodic cron. The only cron a consuming project needs
+// is its own NAS-pull job fetching both the DB backup and this SBOM - see
+// server-bin/nas-pull.sh. server-backup-sbom.sh stays independently runnable
+// (manually or ad hoc) for a one-off snapshot outside a deploy.
 //
 // Disabled by default - a project opts in explicitly because it additionally
 // requires cyclonedx/cyclonedx-php-composer in ITS OWN composer.json (project-
@@ -85,10 +88,48 @@ task('deploy:setup_sbom', function () {
     writeln('');
     writeln("<info>   ✅ SBOM setup complete!</info>");
     writeln("<comment>   📂 $sbomPath/</comment>");
-    writeln("<comment>   ℹ️  Cronjob still needs to be added manually (crontab -e), e.g.:</comment>");
-    writeln("<comment>      0 3 * * * $binPath/server-backup-sbom.sh >> $sbomPath/cron.log 2>&1</comment>");
 });
 
 // Run after deploy:setup_backups, not just deploy:shared - needs bin/ to
 // already exist for the script upload.
 after('deploy:setup_backups', 'deploy:setup_sbom');
+
+desc('Generate a fresh SBOM for this release (opt-in via sbom_enabled)');
+task('deploy:generate_sbom', function () {
+    if (!get('sbom_enabled')) {
+        return;
+    }
+
+    $deployPath = get('deploy_path');
+    $releasePath = get('release_path');
+    $sbomPath = $deployPath . '/sbom';
+    $providerRoot = trim(run("cd $deployPath && cd .. && pwd"));
+    $script = $providerRoot . '/bin/server-backup-sbom.sh';
+
+    if (!test("[ -f $script ]")) {
+        writeln("<comment>⚠ server-backup-sbom.sh not found at $script - skipping SBOM generation</comment>");
+        return;
+    }
+
+    if (!test("[ -f $releasePath/composer.json ]")) {
+        writeln('<comment>⚠ No composer.json in release yet - skipping SBOM generation (first deployment?)</comment>');
+        return;
+    }
+
+    writeln('<comment>🧾 Generating SBOM for this release...</comment>');
+
+    try {
+        // -r pins it to THIS release (not the still-live "current" symlink),
+        // so the SBOM reflects exactly what is about to go live.
+        run("$script -r $releasePath -o $sbomPath");
+        writeln("<info>   ✓ SBOM generated in $sbomPath</info>");
+    } catch (\Throwable $exception) {
+        writeln('<comment>⚠ SBOM generation failed (non-fatal): ' . $exception->getMessage() . '</comment>');
+    }
+});
+
+// Run right after the directory/script are provisioned, still before the
+// symlink switch - the release has its own composer.json/vendor by now
+// (deploy:update_code already ran), so analyzing {{release_path}} is safe
+// even though it is not "current" yet.
+after('deploy:setup_sbom', 'deploy:generate_sbom');
