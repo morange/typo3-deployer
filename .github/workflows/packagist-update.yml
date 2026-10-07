@@ -4,6 +4,11 @@ name: Update Packagist
 # pushed, so packagist.org/packages/dmfh/typo3-deployer reflects new releases
 # without waiting for the periodic crawl. Requires a repository secret
 # PACKAGIST_TOKEN holding the Packagist API token (Profile → Show API Token).
+#
+# Calls Packagist's update-package API directly instead of going through
+# mnavarrocarter/packagist-update: that action always sends the Packagist
+# package-page URL as repository.url instead of the actual GitHub repo URL,
+# which Packagist rejects with 403 (see upstream issue #2, open/unfixed).
 
 on:
   push:
@@ -16,8 +21,8 @@ jobs:
   update-packagist:
     runs-on: ubuntu-latest
     steps:
-      - uses: mnavarrocarter/packagist-update@v1.0.0
-        with:
-          username: steffenmatthes
-          api_token: ${{ secrets.PACKAGIST_TOKEN }}
-          package_name: dmfh/typo3-deployer
+      - name: Notify Packagist
+        run: |
+          curl -sS -f -XPOST -H 'content-type:application/json' \
+            "https://packagist.org/api/update-package?username=steffenmatthes&apiToken=${{ secrets.PACKAGIST_TOKEN }}" \
+            -d '{"repository":{"url":"https://github.com/morange/typo3-deployer"}}'
