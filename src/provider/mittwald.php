@@ -16,8 +16,11 @@ namespace Deployer;
 //     import('.hosts.yml');
 // ============================================================================
 
-// Mittwald supports SSH ControlMaster multiplexing (faster multi-task runs).
-set('ssh_multiplexing', true);
+// Mittwald's own docs flag ControlMaster multiplexing as a known failure mode
+// (ControlPath socket name can exceed the system limit, causing stale/mismatched
+// multiplexed sessions mid-deploy) and recommend disabling it.
+// See: https://developer.mittwald.de/docs/v2/technologies/deployment/deployer/
+set('ssh_multiplexing', false);
 
 // Mittwald ships the project's configured PHP version as `php` in PATH.
 // Override per host in .hosts.yml via `php:` if a project needs a different version.
