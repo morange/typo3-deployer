@@ -65,7 +65,7 @@ task('deploy:setup_backups', function () {
     $htaccessTarget = $backupsPath . '/.htaccess';
     if (!test("[ -f $htaccessTarget ]")) {
         $denyAll = "<IfModule !mod_authz_core.c>\n    Order allow,deny\n    Deny from all\n</IfModule>\n<IfModule mod_authz_core.c>\n    Require all denied\n</IfModule>\n";
-        run("cat > $htaccessTarget <<'HTACCESS'\n$denyAll\nHTACCESS");
+        run("echo '$denyAll' > $htaccessTarget");
         run("chmod 644 $htaccessTarget");
         writeln("<info>   ✓ Wrote deny-all .htaccess (security protection)</info>");
     }
