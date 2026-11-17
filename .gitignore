@@ -15,3 +15,10 @@ composer.lock
 
 # Local working notes / project memory — never committed.
 /Projektdateien/
+
+# OpenSpec planning — proposals/tasks reference real consuming-project
+# names and incidents, which must never appear in this public repo.
+/openspec/
+
+# Local Claude Code tooling (commands/skills) — not part of the package.
+/.claude/

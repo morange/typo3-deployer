@@ -1,5 +1,9 @@
 # Change Log
 
+## 2026-11-17
+
+- c0173b9 [BUGFIX] `src/tasks/composer.php`: Der "Special check" für Alfahosting (`composer --version`) in `composer:detect_path` läuft jetzt in try/catch — auf Hostern, bei denen `composer` nur ein interaktiver Bash-Alias ist (beobachtet auf 1blu), konnte schon der Start der nicht-interaktiven SSH-Login-Shell crashen (`bwrap: Can't find source path /run/user/<uid>/crontabs`) und riss dadurch den kompletten Deploy vor `deploy:symlink` ab, statt sauber auf die bestehende `{{php}} composer.phar`-Fallback-Kette zurückzufallen. Betrifft potenziell jeden Host, auf dem `composer` kein echtes PATH-Binary ist.
+
 ## 2026-10-07
 
 - 242fd92 [BUGFIX] `.github/workflows/packagist-update.yml`: `mnavarrocarter/packagist-update`-Action durch direkten `curl`-Aufruf auf die Packagist-`update-package`-API ersetzt — die Action schickt als `repository.url` immer die Packagist-Paketseite (`https://packagist.org/packages/...`) statt der tatsächlichen GitHub-Repo-URL, worauf Packagist jeden Request mit `403` ablehnt (offenes, ungefixtes Upstream-Issue [#2](https://github.com/mnavarrocarter/packagist-update/issues/2))
