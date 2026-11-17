@@ -68,7 +68,17 @@ task('composer:detect_path', function () {
 	$contextTest = run("cd {{release_path}} && (which composer 2>&1 || whereis composer 2>&1 || echo 'NOT_FOUND')");
 	writeln("<comment>  Result: " . trim($contextTest) . "</comment>");
 
-	$versionTest = run("cd {{release_path}} && (composer --version 2>&1 || echo 'FAILED')");
+	// In try/catch: auf manchen Hosts (beobachtet auf 1blu) kann schon der Login-Shell-Start
+	// dieses SSH-Aufrufs crashen (z.B. "bwrap: Can't find source path /run/user/<uid>/crontabs"),
+	// wenn 'composer' nur ein Bash-Alias ist, das in der nicht-interaktiven Shell nicht existiert.
+	// Ein solcher Crash darf nicht den ganzen Deploy abreißen - stattdessen als "nicht verfügbar"
+	// werten und auf die {{php}} composer.phar-Kette weiter unten zurückfallen.
+	try {
+		$versionTest = run("cd {{release_path}} && (composer --version 2>&1 || echo 'FAILED')");
+	} catch (\Exception $e) {
+		writeln("<comment>  ⚠ 'composer --version' check crashed (" . $e->getMessage() . ") - treating as not available</comment>");
+		$versionTest = 'FAILED';
+	}
 	writeln("<comment>  Version test: " . substr(trim($versionTest), 0, 100) . "</comment>");
 
 	if (stripos($versionTest, 'composer') !== false && strpos($versionTest, 'FAILED') === false) {
