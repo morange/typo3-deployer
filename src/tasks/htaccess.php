@@ -64,8 +64,12 @@ task('deploy:htaccess', function () {
 	if (test("grep -q '{{stage_auth_marker}}' $targetPath")) {
 		writeln('<comment>  → Basic-Auth bereits vorhanden, überspringe</comment>');
 	} else {
-		// Snippet OBEN an die .htaccess anhängen (prepend)
-		run("cat $authSnippet $targetPath > $targetPath.tmp && mv $targetPath.tmp $targetPath");
+		// Snippet OBEN an die .htaccess anhängen (prepend). Explizite Leerzeile
+		// dazwischen statt blindem "cat a b" - verlässt sich sonst darauf, dass
+		// die Snippet-Datei mit einem Newline endet (tat sie nicht: letzte
+		// Snippet-Zeile verschmolz mit der ersten .htaccess-Zeile zu einer
+		// ungültigen Direktive, Apache quittierte das auf BETA mit 500).
+		run("{ cat $authSnippet; echo; cat $targetPath; } > $targetPath.tmp && mv $targetPath.tmp $targetPath");
 		writeln('<info>  ✓ Basic-Auth-Block in .htaccess eingefügt</info>');
 	}
 
