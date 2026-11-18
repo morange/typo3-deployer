@@ -109,17 +109,22 @@ task('composer:detect_path', function () {
 
 	writeln("");
 
-	// Liste aller zu testenden Composer-Pfade
+	// Liste aller zu testenden Composer-Pfade.
+	// {{php}}-gepinnte Varianten IMMER zuerst testen: manche Hoster (1blu) haben
+	// eine alte PHP-Version als Default-Shebang/PATH-Eintrag für bare "php" -
+	// würde die zuerst gefunden, liefe composer install unter der falschen
+	// PHP-Version und composer.lock (gelockt für die projekteigene PHP-Version)
+	// gilt dann fälschlich als "nicht kompatibel".
 	$composerPaths = [
-		'php {{deploy_path}}/shared/composer.phar',  // PHP 8.3 mit shared composer.phar
-		'{{php}} {{deploy_path}}/shared/composer.phar',  // Falls php in hosts.yml gesetzt
+		'{{php}} {{deploy_path}}/shared/composer.phar',
+		'{{php}} {{release_path}}/composer.phar',
+		'{{php}} {{deploy_path}}/composer.phar',
 		'composer',
 		'/usr/local/bin/composer',
 		'/usr/bin/composer',
+		'php {{deploy_path}}/shared/composer.phar',
 		'php {{release_path}}/composer.phar',
-		'{{php}} {{release_path}}/composer.phar',
 		'php {{deploy_path}}/composer.phar',
-		'{{php}} {{deploy_path}}/composer.phar',
 	];
 
 	$allResults = [];
