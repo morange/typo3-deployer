@@ -16,3 +16,7 @@ namespace Deployer;
 set('php', '/opt/php83/bin/php');
 
 // ssh_multiplexing not verified for 1blu — leaving the core default (off).
+
+// 1blu does not impose a filesystem-wide file-count quota like IONOS/Strato
+// do - deploy:check_file_count's guard doesn't apply here.
+set('file_count_check_enabled', false);

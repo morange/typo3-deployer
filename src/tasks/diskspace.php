@@ -59,6 +59,11 @@ task('deploy:check_space', function () {
 
 desc('Check file count limit (e.g. IONOS hosting limit)');
 task('deploy:check_file_count', function () {
+	if (!get('file_count_check_enabled')) {
+		writeln('<comment>  → File count check disabled for this host (see provider profile)</comment>');
+		return;
+	}
+
 	writeln('');
 	writeln('<info>═══════════════════════════════════════════════════════════</info>');
 	writeln('<info>  Checking File Count Limit</info>');

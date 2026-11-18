@@ -97,6 +97,12 @@ set('writable_chmod_mode', '0775'); // base for Deployer; set_permissions refine
 set('writable_chmod_recursive', true);
 set('writable_use_sudo', false);
 
+// --- File count check (see tasks/diskspace.php) -----------------------------
+// Some shared hosters (IONOS, Strato) impose a filesystem-wide inode/file-count
+// quota; deploy:check_file_count guards against exceeding it. Not every hoster
+// has this limit - provider profiles disable it where it doesn't apply.
+set('file_count_check_enabled', true);
+
 // --- Stage Basic-Auth marker (see tasks/htaccess.php) -----------------------
 // The idempotency check greps the project's public/.htaccess.stage-auth snippet
 // for this marker. The snippet must contain the same string. Override per
